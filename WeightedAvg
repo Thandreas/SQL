@@ -1,0 +1,14 @@
+WITH LoanData AS (
+    SELECT
+        CustomerID,
+        AccountBalance,
+        InterestRate
+    FROM [YourDatabase].[YourSchema].[YourLoanTable]
+    WHERE TransactionDate = '2024-02-29'
+    AND ProductGroup = 'Savings' -- Replace with the actual product group name
+)
+
+SELECT 
+    -- CustomerID
+    SUM(AccountBalance * InterestRate) / NULLIF(SUM(AccountBalance), 0) AS WeightedInterestRate
+FROM LoanData;
