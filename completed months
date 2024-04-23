@@ -1,0 +1,8 @@
+
+## Where clause that limits the data to only show completed months
+WHERE YEAR(MndDato) = YEAR(GETDATE()) AND MONTH(MndDato) < MONTH(GETDATE())
+
+## WHERE clause to limit to completed months and only the last completed month
+SELECT *
+FROM my_table
+WHERE date_column = (SELECT MAX(date_column) FROM my_table WHERE YEAR(date_column) = YEAR(GETDATE()) AND MONTH(date_column) < MONTH(GETDATE()));
