@@ -1,0 +1,46 @@
+WITH CTE_tabell AS(
+
+SELECT
+    DATEDIFF(YEAR, Fødselsdato, GETDATE()) - 
+    CASE 
+        WHEN FORMAT(GETDATE(), 'MMdd') < FORMAT(Fødselsdato, 'MMdd') THEN 1 
+        ELSE 0 
+    END AS Alder
+	, KundeID
+	, MndDato
+	, [Fødselsdato]
+FROM [Server].[tabell]
+),
+
+	CTE_2 AS (
+
+	SELECT
+		CASE
+			WHEN [Alder] < 30 THEN '<30'
+			WHEN [Alder] < 40 THEN '30-39'
+			WHEN [Alder] < 50 THEN '40-49'
+			WHEN [Alder] < 60 THEN '50-59'
+			WHEN [Alder] < 70 THEN '60-69'
+			WHEN [Alder] < 80 THEN '70-79'
+			ELSE 'Over 80'
+				END AS Aldersgruppering
+				, [KundeID]
+				, [mndDato]
+				, [Fødselsdato]
+
+	FROM CTE_tabell)
+
+	SELECT
+	COUNT(distinct[KundeID]) AS 'Antall kunder'
+	, [Aldersgruppering]
+
+	FROM CTE_2
+
+	WHERE MndDato = '2024-04-30'
+	AND DATEDIFF(YEAR, Fødselsdato, GETDATE()) -
+    CASE 
+        WHEN FORMAT(GETDATE(), 'MMdd') < FORMAT(Fødselsdato, 'MMdd') THEN 1 
+        ELSE 0 
+    END >= 18
+
+	GROUP BY Aldersgruppering
