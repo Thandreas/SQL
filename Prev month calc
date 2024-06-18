@@ -1,0 +1,3 @@
+## script for å lage en kolonne som har previous month value + en diff kolonne ##
+,LAG ([Lønnsinngang],3) OVER (ORDER BY mnd asc) AS 'Lønnsinngang 1m lag'
+,[Lønnsinngang] - LAG ([Lønnsinngang],3) OVER (ORDER BY mnd asc) AS Diff
