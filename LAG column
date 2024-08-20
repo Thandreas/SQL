@@ -1,0 +1,26 @@
+WITH SisteDato AS (
+SELECT MAX(Dato) AS Max_dato
+
+FROM [Database].[Table]
+)
+
+SELECT[Dato]
+      ,[Uke]
+      ,[Mnd]
+      ,[Kvt]
+      ,[År]
+      ,[Marked]
+      ,[Antall]
+	  ,LAG ([Antall],3) OVER (ORDER BY mnd asc) AS 'Antall kunder 1w lag'
+	  , [Antall] - LAG ([Antall],3) OVER (ORDER BY mnd asc) AS 'Diff Antall kunder'
+
+
+  FROM [Database].[Tabell]
+
+  CROSS JOIN SisteDato
+
+  WHERE [Siste dag Uke] = 1 
+	
+	OR Dato = Max_dato
+
+  ORDER BY Dato desc
