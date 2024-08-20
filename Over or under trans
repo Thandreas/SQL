@@ -1,0 +1,87 @@
+WITH RankedTransactions AS (
+    SELECT 
+        *,
+        RANK() OVER (PARTITION BY Kontonr ORDER BY BOKFORT_DATO ASC) AS TransactionRank
+    FROM 
+        [Database].[tabell]
+),
+FilteredTransactions AS (
+    SELECT 
+        *,
+		CASE 
+            WHEN BELOP >= XXX2 OR BELOP <= -XXX2 THEN 1
+            ELSE 0
+        END AS TransInEllerUtXXX2,
+
+        CASE 
+            WHEN SUM(CASE WHEN BELOP > 0 THEN BELOP END) OVER(PARTITION BY kontonr) >= XXX2 THEN 1
+        ELSE 0
+        END AS TRANSInnbetalingOverXXX,
+
+		CASE 
+            WHEN SUM(CASE WHEN BELOP < 0 THEN BELOP END) OVER(PARTITION BY kontonr) <= -XXX2 THEN 1
+        ELSE 0
+        END AS TRANSUtbetalingOverXXX2,
+
+        CASE 
+            WHEN BELOP <= XXX1 AND BELOP >= -XXX1 THEN 1
+            ELSE 0
+        END AS MellomBelopXXX1
+    FROM 
+        RankedTransactions
+),
+
+noe AS (SELECT 
+    *,
+    CASE 
+        WHEN TransactionRank = 1 AND MellomBelopXXX1 = 1 AND TrnNO = 1 THEN 'TRUE'
+        ELSE 'FALSE'
+    END AS FirstTrans,
+	CASE 
+        WHEN TransactionRank = 2 AND TransInEllerUtXXX2 = 1 AND TrnNO = 2 THEN 'TRUE'
+        ELSE 'FALSE'
+    END AS SecondTrans,
+    CASE 
+        WHEN TransactionRank != 1 AND (TRANSInnbetalingOverXXX2 = 1 OR TRANSUtbetalingOverXXX2 = 1) THEN 'TRUE'
+        ELSE 'FALSE'
+    END AS SUMSecondTrans
+
+	FROM 
+        FilteredTransactions
+)
+
+
+SELECT
+	Kontonr,
+	CASE
+		WHEN MAX(FirstTrans) = 'TRUE' AND MAX(SecondTrans) = 'TRUE' THEN 'True'
+		ELSE 'False'
+	END AS OverXXX2BothTrue,
+	CASE
+		WHEN MAX(FirstTrans) = 'TRUE' AND MAX(SUMSecondTrans) = 'TRUE' THEN 'True'
+		ELSE 'False'
+	END AS SUMBothTrue
+	, MAX(FirstTrans) AS FirstTrans
+	, MAX(SUMSecondTrans) AS SUMSecondTrans
+	, SUM(CASE 
+            WHEN TransactionRank != 1 AND belop > 0 THEN BELOP
+            ELSE 0
+        END) AS SumBelopInnOverXXX2_Trans
+	, SUM(CASE 
+            WHEN TransactionRank != 1 AND belop < 0 THEN BELOP
+            ELSE 0
+        END) AS SumBelopUTOverXXX2_Trans
+	, CASE
+		WHEN SUM(CASE 
+            WHEN TransactionRank != 1 AND belop > 0 THEN BELOP
+            ELSE 0
+        END) >= XXX2 THEN 1 ELSE 0 END AS InnbetalingOverXXX2
+	,  CASE
+		WHEN SUM(CASE 
+            WHEN TransactionRank != 1 AND belop < 0 THEN BELOP
+            ELSE 0
+        END) <= -XXX2 THEN 1 ELSE 0 END AS UtbetalingOverXXX2
+	
+FROM 
+    noe
+	GROUP BY Kontonr
