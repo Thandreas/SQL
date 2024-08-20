@@ -1,0 +1,1 @@
+WHERE MndDato = (SELECT MAX(MndDato) FROM [Database].[Tabell])
