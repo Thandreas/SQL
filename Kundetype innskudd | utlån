@@ -1,0 +1,43 @@
+WITH CTE_Kundetype AS (
+    SELECT [KundeID],
+        CASE 
+            WHEN SUM(CASE WHEN [Produktgruppe] = 'Utlån' AND [MndDato] = g.MaxDato THEN 1 ELSE 0 END) > 0 AND 
+                 SUM(CASE WHEN [Produktgruppe] = 'Innskudd' AND [MndDato] = g.MaxDato AND [Saldo] <> 0 THEN 1 ELSE 0 END) > 0 THEN 'Har begge produkter'
+            WHEN SUM(CASE WHEN [Produktgruppe] = 'Utlån' AND [MndDato] = g.MaxDato THEN 1 ELSE 0 END) > 0 THEN 'Har bare utlån'
+            WHEN SUM(CASE WHEN [Produktgruppe] = 'Innskudd' AND [MndDato] = g.MaxDato THEN 1 ELSE 0 END) > 0 THEN 'Har bare innskudd'
+            ELSE 'Er ikke kunde i dag'
+        END AS [Kundetype i dag],
+
+        CASE 
+            WHEN SUM(CASE WHEN [Produktgruppe] = 'Utlån' THEN 1 ELSE 0 END) > 0 AND 
+                 SUM(CASE WHEN [Produktgruppe] = 'Innskudd' THEN 1 ELSE 0 END) > 0 THEN 'Har begge produkter'
+            WHEN SUM(CASE WHEN [Produktgruppe] = 'Utlån' THEN 1 ELSE 0 END) > 0 THEN 'Har bare utlån'
+            WHEN SUM(CASE WHEN [Produktgruppe] = 'Innskudd' THEN 1 ELSE 0 END) > 0 THEN 'Har bare innskudd'
+            ELSE 'No products found'
+        END AS [Kundetype i løpet av kundeforholdet]
+
+    FROM [Database].[Table]
+    CROSS JOIN (
+        SELECT MAX([MndDato]) AS MaxDato
+        FROM [Database].[Table]
+    ) AS G
+    GROUP BY [KundeID]
+)
+
+SELECT
+    DATEDIFF(YEAR, Fødselsdato, GETDATE()) - 
+    CASE 
+        WHEN FORMAT(GETDATE(), 'MMdd') < FORMAT(Fødselsdato, 'MMdd') THEN 1 
+        ELSE 0 
+    END AS Alder,
+    DENSE_RANK() OVER (ORDER BY [Database].[Table].[KundeID]) AS Kort_kundeID,
+    CTE_Kundetype.[Kundetype i dag],
+    CTE_Kundetype.[Kundetype i løpet av kundeforholdet],
+    [Database].[Table].* -- Include all other columns from the main table
+FROM [Database].[Table]
+INNER JOIN CTE_Kundetype ON [Database].[Table].[KundeID] = CTE_Kundetype.[KundeID]
+WHERE DATEDIFF(YEAR, Fødselsdato, GETDATE()) -
+    CASE 
+        WHEN FORMAT(GETDATE(), 'MMdd') < FORMAT(Fødselsdato, 'MMdd') THEN 1 
+        ELSE 0 
+    END >= 18;
