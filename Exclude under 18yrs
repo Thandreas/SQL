@@ -1,0 +1,14 @@
+SELECT
+    DATEDIFF(YEAR, Fødselsdato, GETDATE()) - 
+    CASE 
+        WHEN FORMAT(GETDATE(), 'MMdd') < FORMAT(Fødselsdato, 'MMdd') THEN 1 
+        ELSE 0 
+    END AS Alder,
+    DENSE_RANK() OVER (ORDER BY [Database].table.[Column]) AS Kort_kundeID,
+    [Database].table.* -- Include all other columns from the main table
+FROM [Database].table
+WHERE DATEDIFF(YEAR, Fødselsdato, GETDATE()) -
+    CASE 
+        WHEN FORMAT(GETDATE(), 'MMdd') < FORMAT(Fødselsdato, 'MMdd') THEN 1 
+        ELSE 0 
+    END >= 18;
