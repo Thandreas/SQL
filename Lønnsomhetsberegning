@@ -1,0 +1,64 @@
+WITH tabell AS (
+	
+SELECT MndDato
+	,Marked
+	,[KundeID]
+    ,SUM(CASE WHEN Produktgruppe = 'Innskudd' THEN Saldo ELSE 0 END) AS Innskudd
+    ,SUM(CASE WHEN Produktgruppe = 'Utlån' THEN Saldo ELSE 0 END) AS Utlån
+
+	,CASE
+        WHEN SUM(CASE WHEN Produktgruppe = 'Innskudd' THEN Saldo ELSE 0 END) = 0 THEN NULL
+        ELSE SUM(CASE WHEN Produktgruppe = 'Innskudd' THEN Saldo * R_Sats1/100 ELSE 0 END) / NULLIF(SUM(CASE WHEN Produktgruppe = 'Innskudd' THEN Saldo ELSE 0 END), 0)
+    END AS Innskudd_weighted_rate
+    
+	,CASE
+        WHEN SUM(CASE WHEN Produktgruppe = 'Utlån' THEN Saldo ELSE 0 END) = 0 THEN NULL
+        ELSE SUM(CASE WHEN Produktgruppe = 'Utlån' THEN Saldo * R_Sats1/100 ELSE 0 END) / NULLIF(SUM(CASE WHEN Produktgruppe = 'Utlån' THEN Saldo ELSE 0 END), 0)
+    END AS Utlån_weighted_rate
+
+	,CASE
+		WHEN MndDato = (SELECT MAX(MndDato) FROM [Database].[Table]) THEN 1 ELSE 0 
+	END AS MaxDatoFlag
+
+FROM [Database].[Table]
+
+WHERE [Produkt navn] != 'Kredittkort utestående saldo'
+
+GROUP BY KundeID, MndDato, Marked
+
+),
+
+vekta_utlånsrente AS (
+SELECT 	Mnddato
+		,CASE
+			WHEN SUM(CASE WHEN Produktgruppe = 'Utlån' THEN Saldo ELSE 0 END) = 0 THEN NULL
+			ELSE SUM(CASE WHEN Produktgruppe = 'Utlån' THEN Saldo * R_Sats1/100 ELSE 0 END) / NULLIF(SUM(CASE WHEN Produktgruppe = 'Utlån' THEN Saldo ELSE 0 END), 0)
+		END AS Utlån_weighted_rate
+
+FROM [Database].[Table]
+
+WHERE [Produkt navn] != 'Kredittkort utestående saldo'
+
+GROUP BY MndDato)
+
+
+SELECT * 
+
+,(COALESCE(innskudd, 0) * ((0.125 * 0.0537) + (0.85 * COALESCE(vekta_utlånsrente.[Utlån_weighted_rate],0) - COALESCE(innskudd_weighted_rate, 0))) 
++ (COALESCE(utlån, 0) * (COALESCE(tabell.[utlån_weighted_rate], 0) - 0.0449))) AS ResultatPerCustomer
+
+,NTILE (10) OVER ( ORDER BY (COALESCE(innskudd, 0) * ((0.125 * 0.0537) + (0.85 * COALESCE(vekta_utlånsrente.[Utlån_weighted_rate],0) - COALESCE(innskudd_weighted_rate, 0))) 
++ (COALESCE(utlån, 0) * (COALESCE(tabell.[utlån_weighted_rate], 0) - 0.0449)))) AS TileNumber
+
+
+-- Gammel beregning for å ha det lagra
+--,(COALESCE(utlån, 0) * COALESCE(utlån_weighted_rate, 0)) - (COALESCE(innskudd, 0) * COALESCE(innskudd_weighted_rate, 0) - (0.0529 - COALESCE(innskudd_weighted_rate, 0)) * COALESCE(innskudd,0)) AS ResultatPerCustomer
+--,NTILE (10) OVER ( ORDER BY (COALESCE(utlån, 0) * COALESCE(utlån_weighted_rate, 0)) - (COALESCE(innskudd, 0) * COALESCE(innskudd_weighted_rate, 0) - (0.0529 - COALESCE(innskudd_weighted_rate, 0)) * COALESCE(innskudd,0))) AS TileNumber
+
+--- (0.0529 - innskudd_weighted_rate) * innskudd)
+
+FROM tabell
+
+JOIN vekta_utlånsrente ON tabell.[MndDato] = vekta_utlånsrente.[MndDato]
+
+ORDER BY ResultatPerCustomer
