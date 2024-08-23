@@ -1,0 +1,12 @@
+  SELECT BAL.[Kundenr], SUM([Antall.Trn]) AS 'Antall transaksjoner'
+
+  FROM [Database1].[Table] AS BAL
+
+  LEFT JOIN Database2 AS AVT ON BAL.[Kundenr] = AVT.[KundenrN]
+
+  WHERE BAL.[MndDato] = '2024-07-31' --(SELECT MAX(MndDato) FROM [Database1].[Table])
+  AND Lønnsinngang = 1
+  
+  GROUP BY BAL.[Kundenr]
+
+  HAVING SUM([Antall.Trn]) > 10
